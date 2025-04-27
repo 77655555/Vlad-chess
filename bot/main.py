@@ -10,35 +10,29 @@ from telegram_bot import ChatGPTTelegramBot
 
 
 def main():
-    # Read .env file
+    # Чтение файла .env
     load_dotenv()
-    asyncio.run(start())
 
-
-async def start():
-    await asyncio.sleep(5)
-
-    # Setup logging
+    # Настройка логирования
     logging.basicConfig(
         format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
         level=logging.INFO
     )
     logging.getLogger("httpx").setLevel(logging.WARNING)
 
-    # Check if the required environment variables are set
+    # Проверка, что все необходимые переменные окружения заданы
     required_values = ['TELEGRAM_BOT_TOKEN', 'OPENAI_API_KEY']
     missing_values = [value for value in required_values if os.environ.get(value) is None]
     if len(missing_values) > 0:
-        logging.error(f'The following environment values are missing in your .env: {", ".join(missing_values)}')
+        logging.error(f'Отсутствуют следующие переменные окружения в файле .env: {", ".join(missing_values)}')
         exit(1)
 
-    # Setup configurations
+    # Настройка конфигураций OpenAI
     model = os.environ.get('OPENAI_MODEL', 'gpt-4o')
     functions_available = are_functions_available(model=model)
     max_tokens_default = default_max_tokens(model=model)
     openai_config = {
         'api_key': os.environ['OPENAI_API_KEY'],
-        'api_base': os.environ.get('OPENAI_API_BASE', 'https://openrouter.ai/api/v1/chat/completions'),
         'show_usage': os.environ.get('SHOW_USAGE', 'false').lower() == 'true',
         'stream': os.environ.get('STREAM', 'true').lower() == 'true',
         'proxy': os.environ.get('PROXY', None) or os.environ.get('OPENAI_PROXY', None),
@@ -70,16 +64,17 @@ async def start():
     }
 
     if openai_config['enable_functions'] and not functions_available:
-        logging.error(f'ENABLE_FUNCTIONS is set to true, but the model {model} does not support it. '
-                      'Please set ENABLE_FUNCTIONS to false or use a model that supports it.')
+        logging.error(f'ENABLE_FUNCTIONS установлен в true, но модель {model} не поддерживает его. '
+                        'Пожалуйста, установите ENABLE_FUNCTIONS в false или используйте модель, которая поддерживает его.')
         exit(1)
     if os.environ.get('MONTHLY_USER_BUDGETS') is not None:
-        logging.warning('The environment variable MONTHLY_USER_BUDGETS is deprecated. '
-                        'Please use USER_BUDGETS with BUDGET_PERIOD instead.')
+        logging.warning('Переменная окружения MONTHLY_USER_BUDGETS устарела. '
+                        'Пожалуйста, используйте USER_BUDGETS с BUDGET_PERIOD вместо.')
     if os.environ.get('MONTHLY_GUEST_BUDGET') is not None:
-        logging.warning('The environment variable MONTHLY_GUEST_BUDGET is deprecated. '
-                        'Please use GUEST_BUDGET with BUDGET_PERIOD instead.')
+        logging.warning('Переменная окружения MONTHLY_GUEST_BUDGET устарела. '
+                        'Пожалуйста, используйте GUEST_BUDGET с BUDGET_PERIOD вместо.')
 
+    # Настройка конфигурации Telegram
     telegram_config = {
         'token': os.environ['TELEGRAM_BOT_TOKEN'],
         'admin_user_ids': os.environ.get('ADMIN_USER_IDS', '-'),
@@ -109,15 +104,18 @@ async def start():
         'bot_language': os.environ.get('BOT_LANGUAGE', 'en'),
     }
 
+    # Настройка плагинов
     plugin_config = {
         'plugins': os.environ.get('PLUGINS', '').split(',')
     }
 
-    # Setup and run ChatGPT and Telegram bot
+    # Настройка и запуск ChatGPT и Telegram бота
     plugin_manager = PluginManager(config=plugin_config)
     openai_helper = OpenAIHelper(config=openai_config, plugin_manager=plugin_manager)
     telegram_bot = ChatGPTTelegramBot(config=telegram_config, openai=openai_helper)
-    telegram_bot.run()
+
+    # Асинхронный запуск бота
+    asyncio.run(telegram_bot.run())
 
 
 if __name__ == '__main__':
