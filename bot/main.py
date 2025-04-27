@@ -1,5 +1,6 @@
 import logging
 import os
+import asyncio
 
 from dotenv import load_dotenv
 
@@ -11,6 +12,11 @@ from telegram_bot import ChatGPTTelegramBot
 def main():
     # Read .env file
     load_dotenv()
+    asyncio.run(start())
+
+
+async def start():
+    await asyncio.sleep(5)
 
     # Setup logging
     logging.basicConfig(
@@ -32,6 +38,7 @@ def main():
     max_tokens_default = default_max_tokens(model=model)
     openai_config = {
         'api_key': os.environ['OPENAI_API_KEY'],
+        'api_base': os.environ.get('OPENAI_API_BASE', 'https://openrouter.ai/api/v1/chat/completions'),
         'show_usage': os.environ.get('SHOW_USAGE', 'false').lower() == 'true',
         'stream': os.environ.get('STREAM', 'true').lower() == 'true',
         'proxy': os.environ.get('PROXY', None) or os.environ.get('OPENAI_PROXY', None),
@@ -64,7 +71,7 @@ def main():
 
     if openai_config['enable_functions'] and not functions_available:
         logging.error(f'ENABLE_FUNCTIONS is set to true, but the model {model} does not support it. '
-                        'Please set ENABLE_FUNCTIONS to false or use a model that supports it.')
+                      'Please set ENABLE_FUNCTIONS to false or use a model that supports it.')
         exit(1)
     if os.environ.get('MONTHLY_USER_BUDGETS') is not None:
         logging.warning('The environment variable MONTHLY_USER_BUDGETS is deprecated. '
